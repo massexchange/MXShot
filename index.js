@@ -18,12 +18,11 @@ page.onLoadFinished = function(status) {
 
 var viewActions = {
     login: function() {
-        var btnLogin = page.evaluate(function() {
+        page.evaluate(function() {
             $("#txtUser").val("pub");
             $("#txtPass").val("test");
             $("#btnLogin").click();
         });
-        // page.sendEvent("click", btnLogin.offsetLeft+5, btnLogin.offsetTop+5);
     },
     profile: function() {
         screenshot("profile");
@@ -33,7 +32,9 @@ var viewActions = {
 };
 
 var screenshot = function(name) {
+    console.log("taking screenshot of: ", name);
     while(!page.render(name + ".png")) {}
+    console.log("done screenshotting");
 };
 
 /*
@@ -64,20 +65,26 @@ var traverseSite = function() {
         current: 1,
         step: function() {
             var view = this.links[this.current];
+            console.log("on link: ", view);
             var cb = this.current < (this.links.length-1)
                 ? this.step
                 : phantom.exit;
             viewActions[view] = function() {
+                console.log("view " + view + " rendered");
                 screenshot(view);
                 cb();
             };
-            page.evaluate(function() {
-                $("#navbar").children("ul").children("li")
-                    .eq(this.current).click();
-            });
+            console.log("about to click link");
+            page.evaluate(function(linkIndex) {
+                var link = $("#navbar").children("ul").children("li").eq(linkIndex);
+                console.log(link);
+                link.click();
+            }, this.current);
+            console.log("link clicked");
             this.current++;
         }
     };
+    console.log("starting traversal");
     traverser.step();
 };
 
