@@ -58,34 +58,35 @@ var traverseSite = function() {
             return $(this).data("name");
         }).get();
     });
-    console.log(JSON.stringify(links));
+    console.log("links: ", JSON.stringify(links));
 
     var traverser = {
         links: links,
-        current: 1,
-        step: function() {
-            var view = this.links[this.current];
-            console.log("on link: ", view);
-            var cb = this.current < (this.links.length-1)
-                ? this.step
-                : phantom.exit;
-            viewActions[view] = function() {
-                console.log("view " + view + " rendered");
-                screenshot(view);
-                cb();
-            };
-            console.log("about to click link");
-            page.evaluate(function(linkIndex) {
-                var link = $("#navbar").children("ul").children("li").eq(linkIndex);
-                console.log(link);
-                link.click();
-            }, this.current);
-            console.log("link clicked");
-            this.current++;
-        }
+        current: 1
     };
+    var step = function() {
+        console.log("current step: ", traverser.current);
+        console.log("traverser: ", JSON.stringify(traverser));
+        var view = traverser.links[traverser.current];
+        console.log("on link: ", view);
+        var cb = traverser.current < (traverser.links.length-1)
+            ? step
+            : phantom.exit;
+        viewActions[view] = function() {
+            console.log("view " + view + " rendered");
+            screenshot(view);
+            cb();
+        };
+        console.log("about to click link");
+        page.evaluate(function(linkIndex) {
+            var link = $("#navbar").children("ul").children("li").eq(linkIndex);
+            link.children("a").click();
+        }, traverser.current);
+        console.log("link clicked");
+        traverser.current++;
+    }
     console.log("starting traversal");
-    traverser.step();
+    step();
 };
 
 page.onCallback = function(view) {
@@ -94,5 +95,22 @@ page.onCallback = function(view) {
     if(viewActions[view])
         viewActions[view]();
 };
+page.onConsoleMessage = function(msg, lineNum, sourceId) {
+    console.log("CONSOLE: ", JSON.stringify(msg));
+};
+page.onError = function(msg, trace) {
+    var msgStack = ['ERROR: ' + msg];
+
+    if (trace && trace.length) {
+        msgStack.push('TRACE:');
+        trace.forEach(function(t) {
+            msgStack.push(' -> ' + t.file + ': ' + t.line + (t.function ? ' (in function "' + t.function +'")' : ''));
+        });
+    }
+    
+    console.error(msgStack.join('\n'));
+};
+
+
 
 page.open('http://localhost/profile');
